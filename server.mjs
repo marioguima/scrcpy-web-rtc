@@ -306,6 +306,16 @@ const adbClient = DIRECT_ADB
     );
 if (DIRECT_ADB) {
     console.log("adb: direct mode (AdbDaemonTransport, no adb-server)");
+    const hostConfigurado = process.env.ADB_DEVICE_HOST;
+    const portaConfigurada = process.env.ADB_DEVICE_PORT || "5555";
+    if (hostConfigurado && typeof adbClient.wirelessConnect === "function") {
+        try {
+            await adbClient.wirelessConnect(`${hostConfigurado}:${portaConfigurada}`);
+            console.log(`adb: connected to ${hostConfigurado}:${portaConfigurada}`);
+        } catch (erro) {
+            console.error(`adb: failed to connect to ${hostConfigurado}:${portaConfigurada}: ${erro.message}`);
+        }
+    }
 }
 
 // prefer the server.bin bundled in this package; fall back to
