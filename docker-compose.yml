@@ -12,6 +12,7 @@ services:
     environment:
       TZ: Asia/Shanghai
       ADB_DEVICE_HOST: 127.0.0.1
+      AUDIO_CODEC: raw
       # ADB_HOST / ADB_PORT point at the adb-server (default 127.0.0.1:5037).
       # For Docker on Linux/Mac, point ADB_HOST at host.docker.internal when
       # reusing the host's adb-server:

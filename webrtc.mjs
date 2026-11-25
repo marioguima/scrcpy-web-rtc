@@ -234,6 +234,9 @@ export function createRtcSession({ sendSignal, onControl, onShell, log, iceServe
             const ts = Number(((packet.pts ?? 0n) * 48n / 1000n) & 0xffffffffn);
             audioTrack.writeRtp(audioStream.packet(AUDIO_PT, packet.data, ts, false));
         },
+        sendEncodedAudio(payload, timestamp) {
+            audioTrack.writeRtp(audioStream.packet(AUDIO_PT, payload, timestamp, false));
+        },
         close() {
             pc.close().catch(() => {});
         },

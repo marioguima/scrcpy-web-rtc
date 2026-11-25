@@ -19,6 +19,7 @@ import qrcode from "qrcode-terminal";
 import { createRtcSession } from "./webrtc.mjs";
 import { SignalRoom, DEFAULT_BROKERS, b64u } from "./signal.mjs";
 import { DeviceStore } from "./deviceStore.mjs";
+import { createAudioTranscoder } from "./audio-transcoder.mjs";
 
 function argValue(...names) {
     for (const name of names) {
@@ -1186,10 +1187,17 @@ async function handleSession(ws, req) {
                     if (meta) log(`audio unavailable: ${meta.type}`);
                     return;
                 }
+                const transcoder = audioCodec === "raw"
+                    ? await createAudioTranscoder((rtp) => rtc?.sendEncodedAudio?.(rtp.payload, rtp.timestamp))
+                    : null;
                 const audioReader = meta.stream.getReader();
                 while (true) {
                     const { done, value: packet } = await audioReader.read();
                     if (done) break;
+                    if (transcoder && packet.type === "data") {
+                        transcoder.write(packet.data);
+                        continue;
+                    }
                     if (rtc?.connected) {
                         try {
                             rtc.sendAudioPacket(packet);
@@ -1206,6 +1214,7 @@ async function handleSession(ws, req) {
                         ws.send(buf);
                     }
                 }
+                transcoder?.close();
             })().catch((e) => log("audio pump error:", e.message));
 
             // clipboard pump: device -> browser

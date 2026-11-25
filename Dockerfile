@@ -29,7 +29,7 @@ RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.li
 
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends android-tools-adb curl ca-certificates && \
+    apt-get install -y --no-install-recommends android-tools-adb ffmpeg curl ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     # NODE_ENV=production above makes npm skip devDeps; force-install them for esbuild
     npm ci --include=dev && \
