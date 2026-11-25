@@ -160,6 +160,10 @@ const VIDEO_ENCODER = argValue("--video-encoder") ?? process.env.VIDEO_ENCODER ?
 // same idea for audio; the codec has to travel with the component name, since
 // scrcpy-server rejects an encoder that doesn't match --audio-codec
 const AUDIO_ENCODER = argValue("--audio-encoder") ?? process.env.AUDIO_ENCODER ?? "";
+// Optional codec override for devices without an Opus encoder. The WebRTC
+// track remains Opus-only for now; non-Opus capture is reported explicitly so
+// the gateway can be upgraded with a transcoder without changing scrcpy args.
+const AUDIO_CODEC = argValue("--audio-codec") ?? process.env.AUDIO_CODEC ?? "";
 // codecs ya-webadb's Init accepts; anything else is coerced back to opus
 const AUDIO_CODECS = ["raw", "opus", "aac"];
 // a probe scrcpy-server started while the session is still coming up aborts on
@@ -697,7 +701,7 @@ async function handleSession(ws, req) {
     // "" = device default; scrcpy-server requires the codec to match the
     // component, and only opus survives the WebRTC audio track
     let audioEncoder = AUDIO_ENCODER;
-    let audioCodec = codecFromEncoderName(AUDIO_ENCODER) || "opus";
+    let audioCodec = codecFromEncoderName(AUDIO_ENCODER) || AUDIO_CODEC || "opus";
     // user-supplied scrcpy options that override QUALITY_PRESETS — populated
     // by `t: "options"` from the page; null means "follow the preset"
     let customOptions = null;
