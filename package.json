@@ -43,6 +43,10 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@csl/ui": "^0.1.31",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.3.5",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "@yume-chan/adb": "^2.6.2",
@@ -52,6 +56,8 @@
     "@yume-chan/scrcpy": "^2.3.0",
     "@yume-chan/stream-extra": "^2.6.1",
     "qrcode-terminal": "^0.12.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "werift": "^0.24.3",
     "ws": "^8.21.2"
   },
