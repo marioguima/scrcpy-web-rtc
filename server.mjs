@@ -695,6 +695,8 @@ async function handleSession(ws, req) {
     }
     let scrcpy;
     let rtc = null;
+    const pendingAudio = [];
+    let wsAudioPackets = 0;
     let rtcGen = 0; // invalidates a pending TURN fetch when rtc-start reruns
     let controller = null;
     let video = null;
@@ -999,6 +1001,9 @@ async function handleSession(ws, req) {
                     log,
                     iceServers: turn,
                 });
+                for (const packet of pendingAudio.splice(0)) {
+                    try { rtc.sendEncodedAudio(packet.payload, packet.timestamp); } catch {}
+                }
                 rtc.onKeyframeRequest = requestKeyframe;
                 rtc.onBitrateEstimate = onBitrateEstimate;
                 if (lastConfig) rtc.sendVideoPacket(lastConfig);
@@ -1197,15 +1202,57 @@ async function handleSession(ws, req) {
                     if (meta) log(`audio unavailable: ${meta.type}`);
                     return;
                 }
-                const transcoder = audioCodec === "raw"
-                    ? await createAudioTranscoder((rtp) => rtc?.sendEncodedAudio?.(rtp.payload, rtp.timestamp))
+                const transcoding = audioCodec === "raw" || audioCodec === "aac";
+                log(`audio stream ready codec=${audioCodec} transcoding=${transcoding}`);
+                const transcoder = transcoding
+                    ? await createAudioTranscoder((rtp) => {
+                        if (rtc) {
+                            try { rtc.sendEncodedAudio(rtp.payload, rtp.timestamp); } catch {}
+                        } else {
+                            pendingAudio.push(rtp);
+                            if (pendingAudio.length > 100) pendingAudio.shift();
+                        }
+                        // If ICE is still checking or WebRTC fails, keep the
+                        // browser audio path aligned with the WS video
+                        // fallback. The client already decodes tag 2 as Opus.
+                        if ((!rtc || !rtc.connected) && ws.readyState === ws.OPEN) {
+                            const pts = BigInt(Math.round(rtp.timestamp * 1000 / 48));
+                            const buf = new Uint8Array(HEADER + rtp.payload.length);
+                            const dv = new DataView(buf.buffer);
+                            buf[0] = 2;
+                            dv.setBigUint64(2, pts);
+                            buf.set(rtp.payload, HEADER);
+                            ws.send(buf);
+                            wsAudioPackets++;
+                            if (wsAudioPackets === 1) log(`audio WS fallback: first Opus packet (${rtp.payload.length} bytes)`);
+                            else if (wsAudioPackets % 500 === 0) log(`audio WS fallback packets=${wsAudioPackets}`);
+                        }
+                    }, { input: audioCodec })
                     : null;
+                let pcmPackets = 0;
                 const audioReader = meta.stream.getReader();
                 while (true) {
                     const { done, value: packet } = await audioReader.read();
                     if (done) break;
+                    if (transcoder && audioCodec === "aac" && packet.type === "configuration") {
+                        transcoder.aacConfig = packet.data;
+                        continue;
+                    }
                     if (transcoder && packet.type === "data") {
-                        transcoder.write(packet.data);
+                        pcmPackets++;
+                        if (pcmPackets === 1) {
+                            const rawAudio = Buffer.from(packet.data);
+                            let nonZero = 0;
+                            let peak = 0;
+                            for (let i = 0; i + 1 < rawAudio.length; i += 2) {
+                                const sample = Math.abs(rawAudio.readInt16LE(i));
+                                if (sample) nonZero++;
+                                if (sample > peak) peak = sample;
+                            }
+                            log(`first raw audio packet received (${rawAudio.length} bytes, nonZeroSamples=${nonZero}, peak=${peak}, hex=${rawAudio.subarray(0, 16).toString("hex")})`);
+                        }
+                        if (audioCodec === "aac") transcoder.writeAac(packet.data, transcoder.aacConfig);
+                        else transcoder.write(packet.data);
                         continue;
                     }
                     if (rtc?.connected) {

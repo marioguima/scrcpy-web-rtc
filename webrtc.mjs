@@ -188,6 +188,7 @@ export function createRtcSession({ sendSignal, onControl, onShell, log, iceServe
 
     const videoPacketizer = new H264Packetizer();
     const audioStream = new RtpStreamState();
+    let encodedAudioPackets = 0;
 
     return {
         get connected() {
@@ -235,6 +236,9 @@ export function createRtcSession({ sendSignal, onControl, onShell, log, iceServe
             audioTrack.writeRtp(audioStream.packet(AUDIO_PT, packet.data, ts, false));
         },
         sendEncodedAudio(payload, timestamp) {
+            encodedAudioPackets++;
+            if (encodedAudioPackets === 1) log(`webrtc: first encoded audio packet (${payload.length} bytes, timestamp=${timestamp})`);
+            else if (encodedAudioPackets % 500 === 0) log(`webrtc: encoded audio packets=${encodedAudioPackets}`);
             audioTrack.writeRtp(audioStream.packet(AUDIO_PT, payload, timestamp, false));
         },
         close() {

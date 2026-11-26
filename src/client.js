@@ -207,6 +207,10 @@ const STRINGS = {
 
 // language: ?lang= param (persisted) > saved choice > browser language
 const langParam = new URLSearchParams(location.search).get("lang");
+const DEBUG_AUDIO = new URLSearchParams(location.search).get("debug") === "audio";
+const debugInfo = (...args) => {
+    if (DEBUG_AUDIO) console.info(...args);
+};
 if (langParam) localStorage.setItem("scrcpy-webrtc-lang", langParam);
 const LANG = (localStorage.getItem("scrcpy-webrtc-lang") || navigator.language || "en")
     .toLowerCase()
@@ -519,6 +523,8 @@ let audioGain = null;
 let audioDecoder = null;
 let audioSinkTime = 0;
 let wsAudioEnabled = true;
+let wsAudioPackets = 0;
+let wsAudioChunks = 0;
 // set when AudioDecoder is missing or rejects the opus codec — keeps the
 // tag-2 packet handler from retrying on every frame
 let audioDecoderFailed = false;
@@ -532,12 +538,17 @@ function ensureAudioDecoder() {
         return;
     }
     audioDecoder = new AudioDecoder({
-        output: scheduleAudioChunk,
+        output: (chunk) => {
+            wsAudioChunks++;
+            if (wsAudioChunks === 1) debugInfo("ws audio: first decoded chunk", chunk.numberOfFrames, chunk.sampleRate);
+            scheduleAudioChunk(chunk);
+        },
         error: (e) => console.warn("ws audio decode error:", e?.message ?? e),
     });
     try {
         // scrcpy's opus stream is 48 kHz stereo; frames arrive one per packet
         audioDecoder.configure({ codec: "opus", sampleRate: 48000, numberOfChannels: 2 });
+        debugInfo("ws audio: AudioDecoder configured");
     } catch (e) {
         audioDecoderFailed = true;
         console.warn("ws audio: opus not supported by AudioDecoder:", e?.message ?? e);
@@ -550,6 +561,12 @@ function ensureAudioDecoder() {
 function scheduleAudioChunk(audioData) {
     try {
         ensureAudioGraph();
+        if (wsAudioChunks === 1) debugInfo("ws audio: playback state", {
+            muted,
+            context: audioCtx?.state,
+            gain: audioGain?.gain?.value,
+            destination: audioCtx?.destination?.maxChannelCount,
+        });
         // muted: still decode to keep the pipeline warm, but never schedule
         if (muted) return;
         if (audioCtx.state !== "running") {
@@ -565,10 +582,16 @@ function scheduleAudioChunk(audioData) {
         for (let c = 0; c < channels; c++) {
             const plane = new Float32Array(frameCount);
             audioData.copyTo(plane, { planeIndex: c, format: "f32-planar" });
+            if (wsAudioChunks === 1 || wsAudioChunks % 100 === 0) {
+                let peak = 0;
+                for (const sample of plane) peak = Math.max(peak, Math.abs(sample));
+                debugInfo("ws audio: decoded PCM peak", { chunk: wsAudioChunks, peak });
+            }
             buffer.copyToChannel(plane, c);
         }
         const src = audioCtx.createBufferSource();
         src.buffer = buffer;
+        src.connect(audioGain);
         // pace by arrival; keep a small safety delay and never run into the past
         audioSinkTime = Math.max(audioSinkTime, audioCtx.currentTime + 0.03);
         // if a long stall let the lead balloon (e.g. tab backgrounded), snap
@@ -597,6 +620,7 @@ function teardownWsAudio() {
 // node the WS path uses, so the 🔊 toggle controls both paths identically.
 let rtcAudio = null; // { src, stream }
 let rtcAudioEl = null; // hidden <audio> used to play the RTP track on iOS
+let rtcAudioUnlock = null;
 
 function ensureAudioGraph() {
     audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
@@ -612,32 +636,44 @@ function setupRtcAudio(track) {
     if (track.kind !== "audio") return;
     teardownRtcAudio();
     const stream = new MediaStream([track]);
-    if (IS_IOS) {
-        // iOS WebKit does not render a remote WebRTC audio track through a
-        // WebAudio MediaStreamSource — the destination stays silent — but it
-        // plays the very same stream from a hidden <audio> element, which is
-        // never hijacked into the fullscreen player the way a sounding <video>
-        // would be. Start muted (autoplay-safe); the 🔊 tap unmutes + resumes.
-        rtcAudioEl = document.createElement("audio");
-        rtcAudioEl.srcObject = stream;
-        rtcAudioEl.autoplay = true;
-        rtcAudioEl.muted = true;
-        rtcAudioEl.volume = 1;
-        document.body.appendChild(rtcAudioEl);
-        rtcAudioEl.play().catch(() => {});
-        return;
+    // Use a real audio element for the remote WebRTC track. This is the
+    // playback path used by the reference CloudPhone client and is more
+    // reliable across Chromium/WebView autoplay and MediaStream policies
+    // than routing the track through MediaStreamAudioSourceNode.
+    rtcAudioEl = document.createElement("audio");
+    rtcAudioEl.srcObject = stream;
+    rtcAudioEl.autoplay = true;
+    rtcAudioEl.playsInline = true;
+    rtcAudioEl.muted = muted;
+    rtcAudioEl.volume = 1;
+    rtcAudioEl.style.display = "none";
+    document.body.appendChild(rtcAudioEl);
+    const retry = () => {
+        if (!rtcAudioEl) return;
+        rtcAudioEl.play().then(() => {
+            if (rtcAudioUnlock) {
+                for (const event of ["pointerdown", "keydown", "touchstart", "click"]) {
+                    window.removeEventListener(event, rtcAudioUnlock, { capture: true });
+                }
+                rtcAudioUnlock = null;
+            }
+        }).catch((e) => console.warn("rtc audio play blocked:", e?.message ?? e));
+    };
+    rtcAudioUnlock = retry;
+    for (const event of ["pointerdown", "keydown", "touchstart", "click"]) {
+        window.addEventListener(event, retry, { once: true, capture: true });
     }
-    try {
-        ensureAudioGraph();
-        const src = audioCtx.createMediaStreamSource(stream);
-        src.connect(audioGain);
-        rtcAudio = { src, stream };
-    } catch (e) {
-        console.warn("rtc audio via WebAudio failed:", e?.message ?? e);
-    }
+    retry();
+    track.addEventListener?.("ended", teardownRtcAudio, { once: true });
 }
 
 function teardownRtcAudio() {
+    if (rtcAudioUnlock) {
+        for (const event of ["pointerdown", "keydown", "touchstart", "click"]) {
+            window.removeEventListener(event, rtcAudioUnlock, { capture: true });
+        }
+        rtcAudioUnlock = null;
+    }
     try { rtcAudio?.src.disconnect(); } catch {}
     rtcAudio = null;
     if (rtcAudioEl) {
@@ -900,6 +936,14 @@ function sendControl(obj) {
     else sendWs(obj);
 }
 
+function playVideoSafely(element = videoEl) {
+    if (!element || element !== videoEl || !element.isConnected || !element.srcObject) return;
+    Promise.resolve(element.play()).catch((err) => {
+        if (err?.name === "AbortError" || element !== videoEl || !element.isConnected) return;
+        console.warn("video.play() rejected:", err);
+    });
+}
+
 function teardownRtc() {
     clearInterval(statsTimer);
     statsTimer = null;
@@ -1073,6 +1117,9 @@ function connect(serial) {
             // audio frame on the WS path: tag(1) + reserved(1) + pts(8) + opus
             if (!wsAudioEnabled) return;
             if (audioDecoderFailed) return;
+            wsAudioPackets++;
+            if (wsAudioPackets === 1) debugInfo("ws audio: first Opus packet", buf.length - 10, "bytes");
+            else if (wsAudioPackets % 500 === 0) debugInfo("ws audio: packets", wsAudioPackets);
             ensureAudioDecoder();
             if (audioDecoder && audioDecoder.state === "configured") {
                 const pts = new DataView(ev.data).getBigUint64(2);
@@ -1161,6 +1208,8 @@ function tryWebRtc() {
 
 async function acceptRtcOffer(sdp, extraIce) {
     pc = new RTCPeerConnection({ iceServers: [...ICE_SERVERS, ...(extraIce ?? [])] });
+    globalThis.__scrcpyPc = pc;
+    debugInfo("scrcpy WebRTC peer connection created", pc);
     pc.onicecandidate = (e) => {
         if (e.candidate) sendWs({ t: "rtc-ice", candidate: e.candidate.toJSON() });
     };
@@ -1178,6 +1227,7 @@ async function acceptRtcOffer(sdp, extraIce) {
         }
     };
     pc.ontrack = (e) => {
+        debugInfo("scrcpy WebRTC ontrack", e.track.kind, e.track.id, e.streams?.length ?? 0);
         // minimize receive-side latency where supported
         try {
             e.receiver.playoutDelayHint = 0;
@@ -1223,7 +1273,7 @@ async function acceptRtcOffer(sdp, extraIce) {
         }
         videoEl.srcObject.addTrack(e.track);
         setupRtcAudio(e.track);
-        videoEl.play().catch((err) => console.warn("video.play() rejected:", err));
+        playVideoSafely(videoEl);
     };
     await pc.setRemoteDescription({ type: "offer", sdp });
     const answer = await pc.createAnswer();
