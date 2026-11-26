@@ -517,9 +517,40 @@
     .tile.accent { color: #7ea6f5; }
     /* the shell tile only appears once the device reports a shell service */
     .tile[hidden] { display: none; }
+
+    /* Convert Phone product shell: the scrcpy stage remains the transport
+       surface, while the surrounding navigation belongs to the product. */
+    #convert-topbar {
+        height: 58px; flex: 0 0 58px; display: flex; align-items: center;
+        gap: 18px; padding: 0 22px; background: #171a22;
+        border-bottom: 1px solid #292e3a; z-index: 4;
+    }
+    #convert-brand { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+    #convert-brand span { color: #7ea6f5; }
+    #convert-context { color: #8b93a1; font-size: 12px; }
+    #convert-topbar-status { margin-left: auto; color: #8b93a1; font-size: 12px; }
+    #convert-main { min-height: 0; flex: 1; display: flex; }
+    #convert-sidebar { width: 62px; flex: 0 0 62px; display: flex; flex-direction: column;
+        align-items: center; gap: 14px; padding-top: 18px; background: #14171e;
+        border-right: 1px solid #292e3a; color: #8b93a1; }
+    .convert-nav-item { width: 38px; height: 38px; display: grid; place-items: center;
+        border: 0; border-radius: 10px; background: transparent; color: inherit; font-size: 18px; }
+    .convert-nav-item.active { background: #263550; color: #a9c6ff; }
+    #stage-wrap { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
+<header id="convert-topbar">
+    <div id="convert-brand">Convert <span>Phone</span></div>
+    <div id="convert-context">Workspace local · CP-01</div>
+    <div id="convert-topbar-status">Aguardando dispositivo</div>
+</header>
+<main id="convert-main">
+<aside id="convert-sidebar" aria-label="Navegação principal">
+    <button class="convert-nav-item active" title="Telefones" aria-label="Telefones">▣</button>
+    <button class="convert-nav-item" title="Arquivos" aria-label="Arquivos">▤</button>
+    <button class="convert-nav-item" title="Configurações" aria-label="Configurações">⚙</button>
+</aside>
 <div id="stage-wrap">
     <div id="stage"></div>
     <span id="status-badge" hidden></span>
@@ -531,6 +562,7 @@
         <div id="terminal"></div>
     </section>
 </div>
+</main>
 <div id="kbdbar" hidden>
     <input id="kbd-input" placeholder="输入文字，回车发送到设备" autocomplete="off" autocapitalize="off">
     <button id="kbd-send">发送</button>

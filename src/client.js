@@ -333,6 +333,7 @@ const settingsSheet = $("settings-sheet");
 const settingsBackdrop = $("settings-backdrop");
 const stageEl = $("stage");
 const badgeEl = $("status-badge");
+const productStatusEl = $("convert-topbar-status");
 const kbdBar = $("kbdbar");
 const kbdInput = $("kbd-input");
 const shellPanel = $("shell-panel");
@@ -686,6 +687,7 @@ function setBadge(text, cls = "") {
     badgeEl.hidden = !text;
     badgeEl.textContent = text;
     badgeEl.className = cls;
+    if (productStatusEl) productStatusEl.textContent = text || (currentSerial ? "Dispositivo conectado" : "Aguardando dispositivo");
 }
 
 async function loadDevices() {
