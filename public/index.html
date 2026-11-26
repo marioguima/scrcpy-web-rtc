@@ -518,53 +518,10 @@
     /* the shell tile only appears once the device reports a shell service */
     .tile[hidden] { display: none; }
 
-    /* Convert Phone product shell: the scrcpy stage remains the transport
-       surface, while the surrounding navigation belongs to the product. */
-    #convert-topbar { min-height: 64px; flex: 0 0 64px; display: flex; align-items: center;
-        justify-content: space-between; gap: 16px; padding: 0 24px; background: #fff;
-        border-bottom: 1px solid #e6e7eb; z-index: 4; color: #252733; }
-    #convert-topbar-left, #convert-topbar-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    #convert-menu-button { width: 34px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: #6b7280; font-size: 20px; }
-    #convert-menu-button:hover, .convert-nav-item:hover { background: #f2f3f5; }
-    #convert-brand { font-size: 18px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
-    #convert-brand span { color: #7367f0; }
-    #convert-context { color: #6b7280; font-size: 13px; white-space: nowrap; }
-    #convert-topbar-status { color: #6b7280; font-size: 13px; white-space: nowrap; }
-    #convert-search { display: flex; align-items: center; gap: 8px; width: 200px; height: 36px; padding: 0 12px;
-        border: 1px solid #e1e3e8; border-radius: 6px; color: #9ca3af; font-size: 14px; }
-    #convert-main { min-height: 0; flex: 1; display: flex; background: #f8f7fa; }
-    #convert-sidebar { width: 240px; flex: 0 0 240px; display: flex; flex-direction: column;
-        padding: 16px 12px; background: #fff; border-right: 1px solid #e6e7eb; color: #6b7280; }
-    #convert-sidebar-brand { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
-        color: #252733; font-size: 17px; font-weight: 700; border-bottom: 1px solid #f0f0f2; margin-bottom: 14px; }
-    #convert-sidebar-brand-mark { width: 28px; height: 20px; border-radius: 6px; background: #7367f0; }
-    .convert-nav-item { min-height: 42px; display: flex; align-items: center; gap: 14px; width: 100%;
-        padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: inherit;
-        text-align: left; font-size: 14px; }
-    .convert-nav-item.active { background: #7367f0; color: #fff; box-shadow: 0 3px 8px rgb(115 103 240 / 30%); }
-    .convert-nav-icon { width: 20px; text-align: center; font-size: 18px; }
-    #stage-wrap { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
-<header id="convert-topbar">
-    <div id="convert-topbar-left">
-        <button id="convert-menu-button" title="Abrir menu" aria-label="Abrir menu">☰</button>
-        <div id="convert-brand">Convert <span>Phone</span></div>
-        <div id="convert-context">Workspace local · CP-01</div>
-    </div>
-    <div id="convert-topbar-actions">
-        <div id="convert-search" aria-label="Buscar">⌕ <span>Buscar</span><small>⌘K</small></div>
-        <div id="convert-topbar-status">Aguardando dispositivo</div>
-    </div>
-</header>
-<main id="convert-main">
-<aside id="convert-sidebar" aria-label="Navegação principal">
-    <div id="convert-sidebar-brand"><span id="convert-sidebar-brand-mark"></span><span>Convert Phone</span></div>
-    <button class="convert-nav-item active" title="Telefones" aria-label="Telefones"><span class="convert-nav-icon">▣</span><span>Telefones</span></button>
-    <button class="convert-nav-item" title="Arquivos" aria-label="Arquivos"><span class="convert-nav-icon">▤</span><span>Arquivos</span></button>
-    <button class="convert-nav-item" title="Configurações" aria-label="Configurações"><span class="convert-nav-icon">⚙</span><span>Configurações</span></button>
-</aside>
+<div id="convert-product-root"></div>
 <div id="stage-wrap">
     <div id="stage"></div>
     <span id="status-badge" hidden></span>
@@ -576,7 +533,6 @@
         <div id="terminal"></div>
     </section>
 </div>
-</main>
 <div id="kbdbar" hidden>
     <input id="kbd-input" placeholder="输入文字，回车发送到设备" autocomplete="off" autocapitalize="off">
     <button id="kbd-send">发送</button>

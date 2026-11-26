@@ -5,6 +5,7 @@ import {
 } from "@yume-chan/scrcpy-decoder-webcodecs";
 import { ScrcpyVideoCodecId } from "@yume-chan/scrcpy";
 import { SignalRoom, b64u } from "../signal.mjs";
+import { mountProductShell } from "./product-shell.jsx";
 // xterm is ~300 KB of the bundle and only matters once the shell is opened,
 // so it loads on demand
 let Terminal = null;
@@ -2311,4 +2312,5 @@ window.addEventListener("focus", async () => {
 });
 
 $("refresh").onclick = loadDevices;
+mountProductShell();
 loadDevices();
