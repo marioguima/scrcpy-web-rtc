@@ -19,6 +19,7 @@ import qrcode from "qrcode-terminal";
 import { createRtcSession } from "./webrtc.mjs";
 import { SignalRoom, DEFAULT_BROKERS, b64u } from "./signal.mjs";
 import { DeviceStore } from "./deviceStore.mjs";
+import { createAudioTranscoder } from "./audio-transcoder.mjs";
 
 function argValue(...names) {
     for (const name of names) {
@@ -160,6 +161,10 @@ const VIDEO_ENCODER = argValue("--video-encoder") ?? process.env.VIDEO_ENCODER ?
 // same idea for audio; the codec has to travel with the component name, since
 // scrcpy-server rejects an encoder that doesn't match --audio-codec
 const AUDIO_ENCODER = argValue("--audio-encoder") ?? process.env.AUDIO_ENCODER ?? "";
+// Optional codec override for devices without an Opus encoder. The WebRTC
+// track remains Opus-only for now; non-Opus capture is reported explicitly so
+// the gateway can be upgraded with a transcoder without changing scrcpy args.
+const AUDIO_CODEC = argValue("--audio-codec") ?? process.env.AUDIO_CODEC ?? "";
 // codecs ya-webadb's Init accepts; anything else is coerced back to opus
 const AUDIO_CODECS = ["raw", "opus", "aac"];
 // a probe scrcpy-server started while the session is still coming up aborts on
@@ -301,6 +306,16 @@ const adbClient = DIRECT_ADB
     );
 if (DIRECT_ADB) {
     console.log("adb: direct mode (AdbDaemonTransport, no adb-server)");
+    const hostConfigurado = process.env.ADB_DEVICE_HOST;
+    const portaConfigurada = process.env.ADB_DEVICE_PORT || "5555";
+    if (hostConfigurado && typeof adbClient.wirelessConnect === "function") {
+        try {
+            await adbClient.wirelessConnect(`${hostConfigurado}:${portaConfigurada}`);
+            console.log(`adb: connected to ${hostConfigurado}:${portaConfigurada}`);
+        } catch (erro) {
+            console.error(`adb: failed to connect to ${hostConfigurado}:${portaConfigurada}: ${erro.message}`);
+        }
+    }
 }
 
 // prefer the server.bin bundled in this package; fall back to
@@ -680,6 +695,8 @@ async function handleSession(ws, req) {
     }
     let scrcpy;
     let rtc = null;
+    const pendingAudio = [];
+    let wsAudioPackets = 0;
     let rtcGen = 0; // invalidates a pending TURN fetch when rtc-start reruns
     let controller = null;
     let video = null;
@@ -697,7 +714,7 @@ async function handleSession(ws, req) {
     // "" = device default; scrcpy-server requires the codec to match the
     // component, and only opus survives the WebRTC audio track
     let audioEncoder = AUDIO_ENCODER;
-    let audioCodec = codecFromEncoderName(AUDIO_ENCODER) || "opus";
+    let audioCodec = codecFromEncoderName(AUDIO_ENCODER) || AUDIO_CODEC || "opus";
     // user-supplied scrcpy options that override QUALITY_PRESETS — populated
     // by `t: "options"` from the page; null means "follow the preset"
     let customOptions = null;
@@ -984,6 +1001,9 @@ async function handleSession(ws, req) {
                     log,
                     iceServers: turn,
                 });
+                for (const packet of pendingAudio.splice(0)) {
+                    try { rtc.sendEncodedAudio(packet.payload, packet.timestamp); } catch {}
+                }
                 rtc.onKeyframeRequest = requestKeyframe;
                 rtc.onBitrateEstimate = onBitrateEstimate;
                 if (lastConfig) rtc.sendVideoPacket(lastConfig);
@@ -1182,10 +1202,59 @@ async function handleSession(ws, req) {
                     if (meta) log(`audio unavailable: ${meta.type}`);
                     return;
                 }
+                const transcoding = audioCodec === "raw" || audioCodec === "aac";
+                log(`audio stream ready codec=${audioCodec} transcoding=${transcoding}`);
+                const transcoder = transcoding
+                    ? await createAudioTranscoder((rtp) => {
+                        if (rtc) {
+                            try { rtc.sendEncodedAudio(rtp.payload, rtp.timestamp); } catch {}
+                        } else {
+                            pendingAudio.push(rtp);
+                            if (pendingAudio.length > 100) pendingAudio.shift();
+                        }
+                        // If ICE is still checking or WebRTC fails, keep the
+                        // browser audio path aligned with the WS video
+                        // fallback. The client already decodes tag 2 as Opus.
+                        if ((!rtc || !rtc.connected) && ws.readyState === ws.OPEN) {
+                            const pts = BigInt(Math.round(rtp.timestamp * 1000 / 48));
+                            const buf = new Uint8Array(HEADER + rtp.payload.length);
+                            const dv = new DataView(buf.buffer);
+                            buf[0] = 2;
+                            dv.setBigUint64(2, pts);
+                            buf.set(rtp.payload, HEADER);
+                            ws.send(buf);
+                            wsAudioPackets++;
+                            if (wsAudioPackets === 1) log(`audio WS fallback: first Opus packet (${rtp.payload.length} bytes)`);
+                            else if (wsAudioPackets % 500 === 0) log(`audio WS fallback packets=${wsAudioPackets}`);
+                        }
+                    }, { input: audioCodec })
+                    : null;
+                let pcmPackets = 0;
                 const audioReader = meta.stream.getReader();
                 while (true) {
                     const { done, value: packet } = await audioReader.read();
                     if (done) break;
+                    if (transcoder && audioCodec === "aac" && packet.type === "configuration") {
+                        transcoder.aacConfig = packet.data;
+                        continue;
+                    }
+                    if (transcoder && packet.type === "data") {
+                        pcmPackets++;
+                        if (pcmPackets === 1) {
+                            const rawAudio = Buffer.from(packet.data);
+                            let nonZero = 0;
+                            let peak = 0;
+                            for (let i = 0; i + 1 < rawAudio.length; i += 2) {
+                                const sample = Math.abs(rawAudio.readInt16LE(i));
+                                if (sample) nonZero++;
+                                if (sample > peak) peak = sample;
+                            }
+                            log(`first raw audio packet received (${rawAudio.length} bytes, nonZeroSamples=${nonZero}, peak=${peak}, hex=${rawAudio.subarray(0, 16).toString("hex")})`);
+                        }
+                        if (audioCodec === "aac") transcoder.writeAac(packet.data, transcoder.aacConfig);
+                        else transcoder.write(packet.data);
+                        continue;
+                    }
                     if (rtc?.connected) {
                         try {
                             rtc.sendAudioPacket(packet);
@@ -1202,6 +1271,7 @@ async function handleSession(ws, req) {
                         ws.send(buf);
                     }
                 }
+                transcoder?.close();
             })().catch((e) => log("audio pump error:", e.message));
 
             // clipboard pump: device -> browser
