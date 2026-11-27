@@ -252,7 +252,9 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
+        align-items: flex-start;
         background: #000;
         /* iOS: stop the pull-to-refresh bounce and long-press callout from
            stealing pointer events; without this a fast tap near the top can
@@ -275,9 +277,10 @@
     #stage:empty { cursor: pointer; }
     .screen {
         max-width: 100%;
-        max-height: 100%;
+        max-height: none;
         width: auto;
-        height: 100%;
+        height: auto;
+        max-width: 100%;
         touch-action: none;
         object-fit: contain;
         position: relative;

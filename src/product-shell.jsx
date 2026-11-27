@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { CslStandaloneProvider } from "@csl/ui/theme/standalone";
-import { CslStandaloneAppShell } from "@csl/ui/layouts/standalone";
-import { CslStandaloneSidebar, CslStandaloneTopbar } from "@csl/ui/navigation/standalone";
+import { CslProvider } from "@csl/ui/theme";
+import { CslAppShell } from "@csl/ui/layouts";
+import { CslSidebar, CslTopbar } from "@csl/ui/navigation";
 import cslStyles from "@csl/ui/styles.css";
 import { Alert, Avatar, Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from "@csl/ui/components";
 
@@ -48,21 +48,22 @@ function ConvertPhoneShell() {
     };
 
     return React.createElement(
-        CslStandaloneProvider,
+        CslProvider,
         { mode: "light", primaryColor: "#7367f0" },
-        React.createElement(CslStandaloneAppShell, {
-            sidebarWidth: 240,
-            sidebar: React.createElement(CslStandaloneSidebar, {
+        React.createElement(CslAppShell, {
+            mode: "light",
+            systemMode: "light",
+            settingsCookie: { skin: "default", layout: "vertical", contentWidth: "wide", navbarContentWidth: "wide" },
+            sidebar: React.createElement(CslSidebar, {
                 brandName: "Convert Phone",
-                activeId: "phones",
-                items: [
-                    { id: "phones", label: "Telefones", icon: React.createElement("span", null, "▣") },
-                    { id: "files", label: "Arquivos", icon: React.createElement("span", null, "▤") },
-                    { id: "settings", label: "Configurações", icon: React.createElement("span", null, "⚙") },
-                ],
+                sections: [{ items: [
+                    { label: "Telefones", href: "/", icon: "ri-smartphone-line" },
+                    { label: "Arquivos", href: "/arquivos", icon: "ri-folder-line" },
+                    { label: "Configurações", href: "/configuracoes", icon: "ri-settings-3-line" },
+                ] }],
             }),
-            topbar: React.createElement(CslStandaloneTopbar, {
-                title: "Convert Phone",
+            topbar: React.createElement(CslTopbar, {
+                searchPlaceholder: "Buscar",
                 actions: React.createElement("span", { id: "convert-topbar-status" }, "Aguardando dispositivo"),
             }),
             children: React.createElement(Box, { sx: { height: "100%", minHeight: 0, overflow: "auto", p: { xs: 2, md: 4 } } },
