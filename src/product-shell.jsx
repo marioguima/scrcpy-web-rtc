@@ -4,7 +4,7 @@ import { CslStandaloneProvider } from "@csl/ui/theme/standalone";
 import { CslStandaloneAppShell } from "@csl/ui/layouts/standalone";
 import { CslStandaloneSidebar, CslStandaloneTopbar } from "@csl/ui/navigation/standalone";
 import cslStyles from "@csl/ui/styles.css";
-import { Alert, Avatar, Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from "@csl/ui/components";
+import { Avatar, Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from "@csl/ui/components";
 
 const rootId = "convert-product-root";
 
@@ -56,25 +56,23 @@ function ConvertPhoneShell() {
                 brandName: "Convert Phone",
                 activeId: "phones",
                 items: [
-                    { id: "phones", label: "Telefones", icon: React.createElement("span", null, "▣") },
-                    { id: "files", label: "Arquivos", icon: React.createElement("span", null, "▤") },
-                    { id: "settings", label: "Configurações", icon: React.createElement("span", null, "⚙") },
+                    { id: "phones", label: "Telefones", icon: React.createElement("i", { className: "ri-smartphone-line" }) },
+                    { id: "files", label: "Arquivos", icon: React.createElement("i", { className: "ri-folder-line" }) },
+                    { id: "settings", label: "Configurações", icon: React.createElement("i", { className: "ri-settings-3-line" }) },
                 ],
             }),
             topbar: React.createElement(CslStandaloneTopbar, {
                 title: "Convert Phone",
                 actions: React.createElement("span", { id: "convert-topbar-status" }, "Aguardando dispositivo"),
             }),
-            children: React.createElement(Box, { sx: { height: "100%", minHeight: 0, overflow: "auto", p: { xs: 2, md: 4 } } },
-                React.createElement(Stack, { spacing: 3, sx: { maxWidth: 1280, mx: "auto" } },
-                    React.createElement(Stack, { direction: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 },
-                        React.createElement(Box, null,
-                            React.createElement(Typography, { variant: "h4", sx: { fontWeight: 700 } }, "Telefones"),
-                            React.createElement(Typography, { color: "text.secondary" }, "Gerencie e acesse os aparelhos do seu workspace."),
+            children: React.createElement(Stack, { spacing: 4 },
+                    React.createElement(Stack, { spacing: 0.5 },
+                        React.createElement(Stack, { direction: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 },
+                            React.createElement(Typography, { variant: "h4" }, "Telefones"),
+                            React.createElement(Chip, { label: status, color: activeSerial ? "success" : "default", variant: activeSerial ? "filled" : "outlined" }),
                         ),
-                        React.createElement(Chip, { label: status, color: activeSerial ? "success" : "default", variant: activeSerial ? "filled" : "outlined" }),
+                        React.createElement(Typography, { color: "text.secondary" }, "Gerencie e acesse os aparelhos do seu workspace."),
                     ),
-                    React.createElement(Alert, { severity: "info" }, "Os modelos abaixo representam os ambientes Redroid disponíveis para esta instalação."),
                     React.createElement(Grid, { container: true, spacing: 2 }, models.map((model) => {
                         const device = findDevice(model);
                         const active = device?.serial === activeSerial;
@@ -97,7 +95,7 @@ function ConvertPhoneShell() {
                             ),
                         );
                     })),
-                    React.createElement(Box, { id: "convert-stage-mount", sx: { display: activeSerial ? "flex" : "none", minHeight: activeSerial ? 560 : 0, height: activeSerial ? "min(72dvh, 800px)" : 0, overflow: "hidden", borderRadius: 1 } }),
+                    React.createElement(Box, { id: "convert-stage-mount", hidden: !activeSerial, sx: { display: activeSerial ? "flex" : "none", minHeight: activeSerial ? 560 : 0, height: activeSerial ? "min(72dvh, 800px)" : 0, overflow: "hidden", borderRadius: 1 } }),
                 ),
             ),
         }),
