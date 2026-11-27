@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { CslStandaloneProvider } from "@csl/ui/theme/standalone";
-import { CslStandaloneAppShell } from "@csl/ui/layouts/standalone";
-import { CslStandaloneSidebar, CslStandaloneTopbar } from "@csl/ui/navigation/standalone";
+import { CslAppShell } from "@csl/ui/layouts";
+import { CslSidebar, CslTopbar } from "@csl/ui/navigation";
 import cslStyles from "@csl/ui/styles.css";
 import { Alert, Avatar, Box, Button, Card, CardContent, CardHeader, Chip, Divider, Grid, IconButton, Stack, Tooltip, Typography } from "@csl/ui/components";
 
@@ -92,20 +91,27 @@ function ConvertPhoneShell() {
     };
     const toggleAudio = () => { window.dispatchEvent(new CustomEvent("convert-phone:toggle-audio")); setAudioOn((value) => !value); };
     const disconnect = () => window.dispatchEvent(new CustomEvent("convert-phone:disconnect"));
-    return React.createElement(CslStandaloneProvider, { mode: "light", primaryColor: "#7367f0" }, React.createElement(CslStandaloneAppShell, {
-        sidebarWidth: 240,
-        sidebar: React.createElement(CslStandaloneSidebar, { brandName: "Convert Phone", activeId: "phones", items: [
-            { id: "phones", label: "Telefones", icon: React.createElement("i", { className: "ri-smartphone-line" }) },
-            { id: "files", label: "Arquivos", icon: React.createElement("i", { className: "ri-folder-line" }) },
-            { id: "settings", label: "Configurações", icon: React.createElement("i", { className: "ri-settings-3-line" }) },
-        ] }),
-        topbar: React.createElement(CslStandaloneTopbar, { title: "Convert Phone", actions: React.createElement(Stack, { direction: "row", spacing: 1, alignItems: "center" },
+    const navigation = [{ items: [
+        { label: "Telefones", href: "/", icon: "ri-smartphone-line" },
+        { label: "Arquivos", href: "/files", icon: "ri-folder-line" },
+        { label: "Configurações", href: "/settings", icon: "ri-settings-3-line" },
+    ] }];
+    const searchItems = navigation[0].items.map((item) => ({ id: item.label, label: item.label, href: item.href, section: "Convert Phone", icon: item.icon }));
+    return React.createElement(CslAppShell, {
+        settingsCookie: { mode: "light", skin: "default", layout: "vertical", navbarContentWidth: "wide", contentWidth: "wide", primaryColor: "#7367f0" },
+        mode: "light",
+        systemMode: "light",
+        direction: "ltr",
+        locale: "pt-BR",
+        scrollToTop: false,
+        sidebar: React.createElement(CslSidebar, { sections: navigation, homeHref: "/", brandName: "Convert Phone" }),
+        topbar: React.createElement(CslTopbar, { searchItems, searchPlaceholder: "Buscar", actions: React.createElement(Stack, { direction: "row", spacing: 1, alignItems: "center" },
             React.createElement(Chip, { label: status, size: "small", color: activeSerial ? "success" : "default", variant: activeSerial ? "filled" : "outlined" }),
             activeSerial ? React.createElement(Tooltip, { title: audioOn ? "Desativar áudio" : "Ativar áudio" }, React.createElement(IconButton, { onClick: toggleAudio, color: audioOn ? "primary" : "default", "aria-label": "Áudio" }, React.createElement("i", { className: audioOn ? "ri-volume-up-line" : "ri-volume-mute-line" }))) : null,
             activeSerial ? React.createElement(Tooltip, { title: "Desconectar" }, React.createElement(IconButton, { onClick: disconnect, color: "error", "aria-label": "Desconectar" }, React.createElement("i", { className: "ri-close-circle-line" }))) : null,
         ) }),
         children: React.createElement(Stack, { spacing: 3 }, React.createElement(DashboardSummary, { devices, activeSerial, onOpen: openDevice }), React.createElement(Card, { id: "convert-stage-card", sx: { display: activeSerial ? "block" : "none", overflow: "hidden" } }, React.createElement(CardHeader, { title: "Tela do telefone", subheader: "Interaja com o aparelho remotamente." }), React.createElement(Divider, null), React.createElement(Box, { id: "convert-stage-mount", sx: { minHeight: 560, height: "min(72dvh, 800px)", overflow: "auto", bgcolor: "#050505", display: "flex", justifyContent: "center" } }))),
-    }));
+    });
 }
 
 export function mountProductShell() {
