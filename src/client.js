@@ -689,6 +689,7 @@ function setBadge(text, cls = "") {
     badgeEl.textContent = text;
     badgeEl.className = cls;
     if (productStatusEl) productStatusEl.textContent = text || (currentSerial ? "Dispositivo conectado" : "Aguardando dispositivo");
+    window.dispatchEvent(new CustomEvent("convert-phone:session", { detail: { serial: currentSerial || "", status: text || (currentSerial ? "Dispositivo conectado" : "Aguardando dispositivo") } }));
 }
 
 async function loadDevices() {
@@ -754,6 +755,8 @@ async function loadDevices() {
         placeholder(t.noDevices);
         setBadge(t.noDevicesHint, "error");
         renderDeviceList([]);
+        window.__convertPhoneDevices = [];
+        window.dispatchEvent(new CustomEvent("convert-phone:devices", { detail: { devices: [] } }));
         return;
     }
     setBadge("");
@@ -767,6 +770,8 @@ async function loadDevices() {
     // render an explicit device list — no auto-connect. on phones the user
     // must tap a device (row or 连接) before its screen appears.
     renderDeviceList(devices);
+    window.__convertPhoneDevices = devices;
+    window.dispatchEvent(new CustomEvent("convert-phone:devices", { detail: { devices } }));
 }
 
 // build the tappable saved-connection rows inside the sheet. each row shows an
@@ -2312,5 +2317,9 @@ window.addEventListener("focus", async () => {
 });
 
 $("refresh").onclick = loadDevices;
+window.addEventListener("convert-phone:connect", (event) => {
+    const serial = event.detail?.serial;
+    if (serial) connect(serial);
+});
 mountProductShell();
 loadDevices();
