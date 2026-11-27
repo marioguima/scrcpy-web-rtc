@@ -507,11 +507,13 @@ let lastSize = "";
 // always start muted on a fresh page load — autoplay policy would otherwise
 // reject the first audio.play() with NotAllowedError, and silent-by-default
 // matches what most users want anyway
-let muted = true;
+// The product shell opens a phone from a real user gesture. Start the browser
+// path with audio on; the product-level audio action can mute it explicitly.
+let muted = false;
 // whether the device should send an audio track at all — separate from
 // browser-side muted. Some Android devices (notably redroid on 13+) ship an
 // opus encoder that crashes on start; turning this off skips audio entirely.
-let audioEnabled = session.audioEnabled !== false;
+let audioEnabled = true;
 let lastClipFromDevice = null;
 let lastClipToDevice = null;
 
@@ -2319,7 +2321,23 @@ window.addEventListener("focus", async () => {
 $("refresh").onclick = loadDevices;
 window.addEventListener("convert-phone:connect", (event) => {
     const serial = event.detail?.serial;
-    if (serial) connect(serial);
+    if (serial) {
+        muted = false;
+        connect(serial);
+        // The card click is the browser gesture that unlocks playback. Create
+        // and resume the graph here rather than requiring the old settings
+        // sheet's sound button.
+        try { ensureAudioGraph(); } catch {}
+        audioCtx?.resume?.().catch(() => {});
+        window.dispatchEvent(new CustomEvent("convert-phone:audio", { detail: { enabled: true } }));
+    }
 });
+window.addEventListener("convert-phone:toggle-audio", () => {
+    const button = $("btn-mute");
+    if (!button) return;
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+});
+window.addEventListener("convert-phone:disconnect", () => disconnect());
 mountProductShell();
 loadDevices();

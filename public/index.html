@@ -541,7 +541,9 @@
     <button id="kbd-send">发送</button>
 </div>
 
-<button id="btn-settings" class="fab" title="设置">⚙</button>
+<!-- Product controls live in Convert Phone's shell. Keep the legacy control
+     target for the transport client, but never expose the old scrcpy modal. -->
+<button id="btn-settings" class="fab" title="设置" hidden>⚙</button>
 <div id="settings-backdrop" hidden></div>
 <section id="settings-sheet" hidden>
     <header id="settings-head">
