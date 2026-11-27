@@ -1017,7 +1017,13 @@ function restoreSession(serial) {
     const enc = savedEncoders(serial);
     if (enc.video) sendWs({ t: "encoder", name: enc.video });
     if (enc.audio) sendWs({ t: "audio-encoder", name: enc.audio, codec: enc.audioCodec ?? "" });
-    if (session.customOptions) sendWs({ t: "options", options: session.customOptions });
+    if (session.customOptions) {
+        const opts = { ...session.customOptions };
+        // Audio is controlled by the product shell now. Do not resurrect an
+        // old settings-sheet value of audio:false from local session state.
+        if (audioEnabled) delete opts.audio;
+        sendWs({ t: "options", options: opts });
+    }
 }
 
 function connect(serial) {
