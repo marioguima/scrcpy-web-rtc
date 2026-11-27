@@ -114,7 +114,7 @@ export function mountProductShell() {
         style.dataset.convertPhoneTransport = "true";
         style.textContent = `
             #convert-product-root { height: 100dvh; min-height: 0; }
-            #convert-stage-mount { height: 100%; min-height: 0; display: flex; overflow: hidden; padding: 0; }
+            #convert-stage-mount { height: 100%; min-height: 0; overflow: hidden; padding: 0; }
             #convert-stage-mount > #stage-wrap { width: 100%; height: 100%; min-height: 0; }
         `;
         document.head.appendChild(style);
