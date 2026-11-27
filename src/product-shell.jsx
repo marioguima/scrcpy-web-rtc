@@ -50,6 +50,7 @@ function ConvertPhoneShell() {
     return React.createElement(
         CslStandaloneProvider,
         { mode: "light", primaryColor: "#7367f0" },
+        React.createElement(Box, { sx: { width: "100vw", minHeight: "100vh" } },
         React.createElement(CslStandaloneAppShell, {
             sidebarWidth: 240,
             sidebar: React.createElement(CslStandaloneSidebar, {
@@ -97,7 +98,7 @@ function ConvertPhoneShell() {
                     })),
                     React.createElement(Box, { id: "convert-stage-mount", hidden: !activeSerial, sx: { display: activeSerial ? "flex" : "none", minHeight: activeSerial ? 560 : 0, height: activeSerial ? "min(72dvh, 800px)" : 0, overflow: "hidden", borderRadius: 1 } }),
                 ),
-        }),
+        })),
     );
 }
 
