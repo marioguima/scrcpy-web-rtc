@@ -35,9 +35,13 @@ function ConvertPhoneShell() {
         { id: "android11", title: "Android 11", subtitle: "Redroid · modelo de teste", serialHint: "redroid-video-test11", tone: "success" },
         { id: "android13", title: "Android 13", subtitle: "Redroid · WhatsApp disponível", serialHint: "android01", tone: "warning" },
     ];
-    const findDevice = (model) => devices.find((device) =>
-        `${device.serial} ${device.model ?? ""} ${device.product ?? ""}`.toLowerCase().includes(model.serialHint.toLowerCase()),
-    );
+    const findDevice = (model) => devices.find((device) => {
+        const identity = `${device.serial} ${device.model ?? ""} ${device.product ?? ""}`.toLowerCase();
+        const hints = model.id === "android11"
+            ? ["redroid-video-test11", "redroid11", ":15572"]
+            : ["android01", "redroid13", ":15555"];
+        return hints.some((hint) => identity.includes(hint));
+    });
     const openDevice = (model) => {
         const device = findDevice(model);
         if (device) window.dispatchEvent(new CustomEvent("convert-phone:connect", { detail: { serial: device.serial } }));
