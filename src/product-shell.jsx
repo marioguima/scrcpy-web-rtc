@@ -53,7 +53,16 @@ function ConvertPhoneShell() {
         React.createElement(CslAppShell, {
             mode: "light",
             systemMode: "light",
-            settingsCookie: { skin: "default", layout: "vertical", contentWidth: "wide", navbarContentWidth: "wide" },
+            settingsCookie: {
+                skin: "default",
+                layout: "vertical",
+                contentWidth: "wide",
+                navbarContentWidth: "wide",
+                footerContentWidth: "wide",
+                semiDark: false,
+                navbar: { type: "fixed", contentWidth: "wide", floating: false, detached: true, blur: true },
+                footer: { type: "static", contentWidth: "wide", detached: true },
+            },
             sidebar: React.createElement(CslSidebar, {
                 brandName: "Convert Phone",
                 sections: [{ items: [
