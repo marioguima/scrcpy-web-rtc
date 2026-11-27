@@ -109,15 +109,5 @@ export function mountProductShell() {
         style.textContent = cslStyles;
         document.head.appendChild(style);
     }
-    if (!document.head.querySelector("style[data-convert-phone-transport]")) {
-        const style = document.createElement("style");
-        style.dataset.convertPhoneTransport = "true";
-        style.textContent = `
-            #convert-product-root { height: 100dvh; min-height: 0; }
-            #convert-stage-mount { height: 100%; min-height: 0; overflow: hidden; padding: 0; }
-            #convert-stage-mount > #stage-wrap { width: 100%; height: 100%; min-height: 0; }
-        `;
-        document.head.appendChild(style);
-    }
     createRoot(document.getElementById(rootId)).render(React.createElement(ConvertPhoneShell));
 }
