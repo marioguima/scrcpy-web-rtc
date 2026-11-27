@@ -59,6 +59,7 @@ function ConvertPhoneShell() {
                 contentWidth: "wide",
                 navbarContentWidth: "wide",
                 footerContentWidth: "wide",
+                primaryColor: "#7367f0",
                 semiDark: false,
                 navbar: { type: "fixed", contentWidth: "wide", floating: false, detached: true, blur: true },
                 footer: { type: "static", contentWidth: "wide", detached: true },
